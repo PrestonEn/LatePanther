@@ -57,8 +57,6 @@ class Network(object):
                                                   self.num_output))
     # def __init__
 
-    # network is initialized, now what?
-
     # run(self, file of inputs)
         # take array of attributes and set input nodes,
         # turn bitstring class into array and set outputs
@@ -68,6 +66,12 @@ class Network(object):
 
 
     # backprop(self, the target values, learning rate, momentum)
+    """Backpropigation
+    Arguments:
+    targets -- array of target values of form [0,0,1]
+    learn_rt -- 0.0 < value <= 1.0, learning rate
+    momentum -- 0.0 < value <= 1.0
+    """
 
 
     # train
