@@ -41,13 +41,11 @@ class Network(object):
         self.outs = numpy.ones(self.num_out)
 
         # initialize the weight matrices to 0
-        self.in_weights = numpy.random.uniform(w_min,
-                                               w_max,
+        self.in_weights = numpy.random.uniform(w_min, w_max,
                                                (self.num_inputs,
                                                 self.num_hidden))
 
-        self.hidden_weights = numpy.random.uniform(w_min,
-                                                   w_max,
+        self.hidden_weights = numpy.random.uniform(w_min, w_max,
                                                    (self.num_hidden,
                                                     self.num_output))
 
