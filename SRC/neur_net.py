@@ -22,7 +22,7 @@ class Network(object):
     outputs -- number of output classes
     w_min -- minimum random range for generating initial weights
     w_max -- maximum random range for generating initial weights
-
+    act_der -- tuple of function pointers for passing activation and derivitive
 
     """
     def __init__(self, inputs, hidden, outputs, w_min, w_max, act_der, bias=1):
