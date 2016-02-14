@@ -6,15 +6,12 @@
 import math
 import numpy
 import random
-
+from math import tanh
 
 """
 BEGIN EXPERIMENT VALS
 """
 random.seed(666)
-
-def tanh(x):
-    return math.tanh(x)
 
 def tanhdir(y):
     return 1-y**2
