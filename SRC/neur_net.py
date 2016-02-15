@@ -1,16 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-
-
 import math
 import numpy
 import random
 
-
-"""
-BEGIN EXPERIMENT VALS
-"""
 random.seed(666)
 
 def tanh(x):
@@ -62,6 +56,12 @@ class Network(object):
                                                   self.num_output))
 
     def run(self, inputs):
+        """
+        Arguments:
+        targets -- array of target values of form [0,0,1]
+        learn_rt -- 0.0 < value <= 1.0, learning rate
+        momentum -- 0.0 < value <= 1.0
+        """
         # set inputs
         for i in xrange(self.num_inputs - self.bias):
             self.inputs[i] = inputs[i]
@@ -81,13 +81,13 @@ class Network(object):
             self.outputs[o] = tanh(total)
         return self.outputs[:]
 
-    """Backpropigation
-    Arguments:
-    targets -- array of target values of form [0,0,1]
-    learn_rt -- 0.0 < value <= 1.0, learning rate
-    momentum -- 0.0 < value <= 1.0
-    """
     def backprop(self, targets, learning, momentum):
+        """Backpropigation
+        Arguments:
+        targets -- array of target values of form [0,0,1]
+        learn_rt -- 0.0 < value <= 1.0, learning rate
+        momentum -- 0.0 < value <= 1.0
+        """
         out_deltas = numpy.zeros(self.num_output)
         hidden_deltas = numpy.zeros(self.num_hidden)
 
@@ -125,15 +125,14 @@ class Network(object):
             error += 0.5*(targets[o] - self.outputs[o])**2.0
         return error
 
-
-
-
-    """Train
-    """
     def train(self, dataset, itter, learning_rate, momentum):
-        # give a training example
-        # do the forward pass
-        # run backprop
+        """training function
+        Arguments:
+        dataset --
+        itter --
+        learning_rate --
+        momentum --
+        """
         for i in xrange(itter):
             error = 0.0
             for example in dataset:
@@ -143,10 +142,12 @@ class Network(object):
             error /= float(len(dataset))
             print error
 
-
-    """test
-    """
     def test(self, patterns, verbose=False):
+        """testing function
+        Arguments:
+        patterns --
+        verbose --
+        """
         tmp = []
 
         for p in patterns:
