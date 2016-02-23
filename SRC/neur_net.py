@@ -135,12 +135,13 @@ class Network(object):
         """
         for i in xrange(itter):
             error = 0.0
+            count_correct = 0
             for example in dataset:
                 self.run(example[0])
                 ex_error = self.backprop(example[1], learning_rate, momentum)
                 error += ex_error
             error /= float(len(dataset))
-            print error
+            print i, ":\t\t", 'error =', error
 
     def test(self, patterns, verbose=False):
         """testing function
