@@ -1,15 +1,45 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+
+"""
+Author: Preston Engstrom, pe12nh, 5228549
+Date: March 2, 2016
+
+A simple implementation of a single hidden layer,
+feed-forward neural network.
+
+Backpropigation and Resilient Propigation are implemnted
+as training functions.
+
+PEP 8 is gr8
+"""
+
 import pprint
 import math
-import numpy
+import numpy as np
 import random
-import numpy_loadtext_test as loadd
-import pandas as pd
-import csv
+import copy
+import time
 
-random.seed(4564)
-pp = pprint.PrettyPrinter(indent=4)
+current_milli_time = lambda: int(round(time.time() * 1000))
+
+random.seed(current_milli_time())
+pp = pprint.PrettyPrinter(indent=1)
+
+
+def create_dataset(file, attrib_col_start, attrib_col_end, class_col, label_col, header=True):
+    values =  np.loadtxt(file, delimiter=',',
+                         usecols=range(attrib_col_start,attrib_col_end+1),
+                         skiprows=1)
+
+    labels =  np.loadtxt(file, delimiter=',', usecols=[class_col], skiprows=1, dtype=str)
+    nums = []
+    for string in labels:
+        nums.append([int(n) for n in list(string)])
+
+    return [list(a) for a in zip(values.tolist(), nums)]
+iris_data = create_dataset("../data/iris/iris_post_norm_0to1.csv",0,3,4,5)
+cancer_data = create_dataset("../data/wisc/cancer_post_norm_0to1.csv",0,29,30,31)
 
 
 def activation(x):
@@ -29,7 +59,7 @@ class Network(object):
     act_der -- tuple of function pointers for passing activation and derivitive
 
     """
-    def __init__(self, inputs, hidden, outputs, w_min, w_max, bias=1):
+    def __init__(self, inputs, hidden, outputs, w_min, w_max, activ, err, bias=1):
         # if bias = 1, we have a bias on the input-hidden
         # and hidden-output matrix
         self.bias = bias
@@ -40,36 +70,35 @@ class Network(object):
         self.num_output = outputs
 
         # initialize the layer value lists
-        self.inputs = numpy.ones(self.num_inputs)
-        self.hiddens = numpy.ones(self.num_hidden)
-        self.outputs = numpy.ones(self.num_output)
+        self.inputs = np.ones(self.num_inputs)
+        self.hiddens = np.ones(self.num_hidden)
+        self.outputs = np.ones(self.num_output)
 
         # initialize the weight matrices to 0
-        self.in_weights = numpy.random.uniform(w_min, w_max,
+        self.in_weights = np.random.uniform(w_min, w_max,
                                                (self.num_inputs,
                                                 self.num_hidden))
 
-        self.hidden_weights = numpy.random.uniform(w_min, w_max,
+        self.hidden_weights = np.random.uniform(w_min, w_max,
                                                    (self.num_hidden,
                                                     self.num_output))
 
         # build weight update overlay matrices
-        self.in_weight_overlay = numpy.zeros((self.num_inputs,
-                                              self.num_hidden))
+        self.in_weight_overlay = np.zeros((self.num_inputs,
+                                           self.num_hidden))
 
-        self.hidden_weight_overlay = numpy.zeros((self.num_hidden,
-                                                  self.num_output))
+        self.hidden_weight_overlay = np.zeros((self.num_hidden,
+                                               self.num_output))
+
+        self.activation = activ
+        self.error_function = err
 
         # rProp variables
-
-
 
     def run(self, inputs):
         """
         Arguments:
-        targets -- array of target values of form [0,0,1]
-        learn_rt -- 0.0 < value <= 1.0, learning rate
-        momentum -- 0.0 < value <= 1.0
+        inputs --
         """
         # set inputs
         for i in xrange(self.num_inputs - self.bias):
@@ -80,19 +109,19 @@ class Network(object):
             total = 0.0
             for i in xrange(self.num_inputs):
                 total += self.inputs[i] * self.in_weights[i][h]
-            self.hiddens[h] = activation(total)
+            self.hiddens[h] = self.activation(total)
 
         # pass hiddens to outputs
         for o in xrange(self.num_output):
             total = 0.0
             for h in xrange(self.num_hidden):
                 total += self.hiddens[h] * self.hidden_weights[h][o]
-            self.outputs[o] = activation(total)
+            self.outputs[o] = self.activation(total)
 
         # map the results to a more readable predicted class
         max_value = max(self.outputs)
         max_index = self.outputs.tolist().index(max_value)
-        predicted_class = numpy.zeros(len(self.outputs))
+        predicted_class = np.zeros(len(self.outputs))
         predicted_class[max_index] = 1.0
 
         # return outputs and readable class
@@ -105,20 +134,20 @@ class Network(object):
         learn_rt -- 0.0 < value <= 1.0, learning rate
         momentum -- 0.0 < value <= 1.0
         """
-        out_deltas = numpy.zeros(self.num_output)
-        hidden_deltas = numpy.zeros(self.num_hidden)
+        out_deltas = np.zeros(self.num_output)
+        hidden_deltas = np.zeros(self.num_hidden)
 
         # calulate out deltas
         for o in xrange(self.num_output):
             out_deltas[o] = targets[o] - self.outputs[o]
-            out_deltas[o] *= error_function(self.outputs[o])
+            out_deltas[o] *= self.error_function(self.outputs[o])
 
         # calculate hidden deltas
         for h in xrange(self.num_hidden):
             error = 0.0
             for o in xrange(self.num_output):
                 error += out_deltas[o] * self.hidden_weights[h][o]
-            hidden_deltas[h] = error * error_function(self.hiddens[h])
+            hidden_deltas[h] = error * self.error_function(self.hiddens[h])
 
         # update hidden weights
         for h in xrange(self.num_hidden):
@@ -142,10 +171,8 @@ class Network(object):
             error += 0.5*(targets[o] - self.outputs[o])**2.0
         return error
 
-
-
-    def train(self, dataset, itter, learning_rate, momentum):
-        """training function
+    def trainBP(self, dataset, itter, learning_rate, momentum, verbose=False):
+        """Backpropigation based training
         Arguments:
         dataset --
         itter --
@@ -155,16 +182,29 @@ class Network(object):
         for i in xrange(itter):
             error = 0.0
             count_correct = 0
+            error_record = []
             for example in dataset:
                 self.run(example[0])
                 ex_error = self.backprop(example[1], learning_rate, momentum)
                 error += ex_error
             error /= float(len(dataset))
 
-            print i, ":\t\t", 'error =', error
+            if verbose:
+                print i, ":\t\t", 'error =', error
+
+            error_record.append([i, error])
             if (error < 0.02):
                 return
 
+    def trainRP(self, dataset, itter, learning_rate, momentum, verbose=False):
+        """Resilient Propigation based training
+        Arguments:
+        dataset --
+        itter --
+        learning_rate --
+        momentum --
+        """
+        print "TODO"
 
     def test(self, patterns, verbose=False):
         """testing function
@@ -172,41 +212,72 @@ class Network(object):
         patterns --
         verbose --
         """
-        tmp = []
+
         count =0
         correct = 0
         for p in patterns:
+            count+= 1
             res = self.run(p[0])
             if verbose:
-                print p[0], '->', [ '%.2f' % elem for elem in res[0] ], '=', p[1] , '=' , res[1]
-            count+= 1
+                print p[0], '->', [ '%.2f' % elem for elem in res[0] ],'=' , res[1], '=', p[1]
             cor = False in(p[1]==res[1])
             if(cor == False):
                 correct+=1
 
-        print count, "    ", correct, "    ", float(correct)/float(count)
-        return tmp
+        results = [len(patterns), correct, float(correct)/float(len(patterns))]
+        print results
+        return results
 
-def xor_test():
-    data =[
-        [[0,0],[0,1]],
-        [[1,0],[1,0]],
-        [[0,1],[1,0]],
-        [[1,1],[0,1]],
-    ]
-    ann = Network(2,4,2,-1,1)
-    ann.train(data,1000,0.5,0.5)
-    ann.test(data, verbose=True)
+
+def iris_holdout_bp(test_portion, hidden_nodes, fun_pair, len_rate, momentum, shuffle = False):
+    """
+    Simple holdout method: split data into 2
+    sets, training and validation
+    :param training_size:
+    :return:
+    """
+    ann = Network(4, hidden_nodes, 3, 0, 1, fun_pair[0], fun_pair[1])
+
+    if shuffle:
+        np.random.shuffle(iris_data)
+
+    working_set = iris_data
+    test_size = int(test_portion * len(iris_data))
+
+    validation_set = working_set[:test_size]
+    training_set = working_set[test_size:]
+
+    ann.trainBP(training_set, 500, len_rate, momentum, True)
+    ann.test(validation_set, True)
+
+def cancer_holdout_bp(test_portion, hidden_nodes, fun_pair, len_rate, momentum, shuffle = False):
+    """
+    Simple holdout method: split data into 2
+    sets, training and validation
+    :param training_size:
+    :return:
+    """
+    ann = Network(30, hidden_nodes, 2, 0, 1, fun_pair[0], fun_pair[1])
+
+    if shuffle:
+        np.random.shuffle(cancer_data)
+
+    working_set = cancer_data
+    test_size = int(test_portion * len(cancer_data))
+
+    validation_set = working_set[:test_size]
+    training_set = working_set[test_size:]
+
+    ann.trainBP(training_set, 500, len_rate, momentum, True)
+    ann.test(validation_set, False)
 
 
 
 def iris_test():
-    data = loadd.create_iris_data()
-    numpy.random.shuffle(data)
 
 
-    train = data[:80]
-    test = data[80:]
+    train = iris_data[:80]
+    test = iris_data[80:]
 
     pp.pprint(train)
 
@@ -216,17 +287,14 @@ def iris_test():
 
 
 def cancer_test():
-    data = loadd.create_cancer_data()
-    numpy.random.shuffle(data)
-
-    train = data[:300]
-    test = data[300:]
+    np.random.shuffle(cancer_data)
+    train = cancer_data[:455]
+    test = cancer_data[455:]
 
     pp.pprint(train)
+    ann = Network(30, 8, 2, 0, 1, activation, error_function)
+    ann.trainBP(train, 1000,0.7,0.5)
+    ann.test(test)
 
-    ann = Network(30,  8, 2, 0, 1)
-    ann.train(train, 1000,0.7,0.5)
-    ann.test(test, verbose=True)
 
-
-cancer_test()
+cancer_holdout_bp(.2, 21,(activation, error_function), 0.7, 0.5, True)
