@@ -23,7 +23,7 @@ import time
 
 current_milli_time = lambda: int(round(time.time() * 1000))
 
-random.seed(current_milli_time())
+random.seed(666)
 pp = pprint.PrettyPrinter(indent=1)
 
 
@@ -196,15 +196,7 @@ class Network(object):
             if (error < 0.02):
                 return
 
-    def trainRP(self, dataset, itter, learning_rate, momentum, verbose=False):
-        """Resilient Propigation based training
-        Arguments:
-        dataset --
-        itter --
-        learning_rate --
-        momentum --
-        """
-        print "TODO"
+
 
     def test(self, patterns, verbose=False):
         """testing function
@@ -274,15 +266,11 @@ def cancer_holdout_bp(test_portion, hidden_nodes, fun_pair, len_rate, momentum, 
 
 
 def iris_test():
+    test = iris_data[:30]
+    train = iris_data[30:]
 
-
-    train = iris_data[:80]
-    test = iris_data[80:]
-
-    pp.pprint(train)
-
-    ann = Network(4,  9, 3, -1, 1)
-    ann.train(train, 500,0.7,0.5)
+    ann = Network(4,  8, 3, 0, 1, activation, error_function, True)
+    ann.trainBP(train, 500,0.8,0.5, True)
     ann.test(test, verbose=True)
 
 
@@ -291,10 +279,9 @@ def cancer_test():
     train = cancer_data[:455]
     test = cancer_data[455:]
 
-    pp.pprint(train)
-    ann = Network(30, 8, 2, 0, 1, activation, error_function)
-    ann.trainBP(train, 1000,0.7,0.5)
+    ann = Network(30, 8, 2, 0, 1, activation, error_function,True)
+    ann.trainBP(train, 1000,0.7,0.5,True)
     ann.test(test)
 
-
-cancer_holdout_bp(.2, 21,(activation, error_function), 0.7, 0.5, True)
+# iris_holdout_bp(0.2, 5, (activation,error_function),0.8,0.5,True)
+iris_test()
