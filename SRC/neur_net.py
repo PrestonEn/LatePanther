@@ -94,6 +94,12 @@ class Network(object):
         self.error_function = err
 
         # rProp variables
+        self.prevGradOut = np.ones((self.num_hidden,
+                                     self.num_output)).__mul__(0.1)
+
+        self.prevGradIn = np.ones((self.num_inputs,
+                                    self.num_hidden)).__mul__(0.1)
+
 
     def run(self, inputs):
         """
@@ -185,26 +191,18 @@ class Network(object):
             error_record = []
             for example in dataset:
                 self.run(example[0])
-                ex_error = self.backprop(example[1], learning_rate, momentum)
-                error += ex_error
-            error /= float(len(dataset))
+                # update gradient
+            # do rprop
 
-            if verbose:
-                print i, ":\t\t", 'error =', error
 
-            error_record.append([i, error])
-            if (error < 0.02):
-                return
-
-    def trainRP(self, dataset, itter, learning_rate, momentum, verbose=False):
+    def resilporp(self, targets, itter, npos, nneg, dmin, dmax,verbose=False):
         """Resilient Propigation based training
         Arguments:
-        dataset --
-        itter --
-        learning_rate --
-        momentum --
+
         """
-        print "TODO"
+
+
+
 
     def test(self, patterns, verbose=False):
         """testing function
@@ -250,6 +248,7 @@ def iris_holdout_bp(test_portion, hidden_nodes, fun_pair, len_rate, momentum, sh
     ann.trainBP(training_set, 500, len_rate, momentum, True)
     ann.test(validation_set, True)
 
+
 def cancer_holdout_bp(test_portion, hidden_nodes, fun_pair, len_rate, momentum, shuffle = False):
     """
     Simple holdout method: split data into 2
@@ -274,16 +273,15 @@ def cancer_holdout_bp(test_portion, hidden_nodes, fun_pair, len_rate, momentum, 
 
 
 def iris_test():
-
-
     train = iris_data[:80]
     test = iris_data[80:]
 
     pp.pprint(train)
 
-    ann = Network(4,  9, 3, -1, 1)
-    ann.train(train, 500,0.7,0.5)
+    ann = Network(4, 6, 3, 0, 1, activation, error_function)
+    ann.trainBP(train, 500,0.7,0.5)
     ann.test(test, verbose=True)
+
 
 
 def cancer_test():
@@ -296,5 +294,8 @@ def cancer_test():
     ann.trainBP(train, 1000,0.7,0.5)
     ann.test(test)
 
-
-cancer_holdout_bp(.2, 21,(activation, error_function), 0.7, 0.5, True)
+iris_test()
+#
+# iris_holdout_bp(.2, 8,(activation, error_function), 0.7, 0.5, True)
+# cancer_holdout_bp(.2, 15,(activation, error_function), 0.7, 0.5, True)
+x = np.ones(3)
