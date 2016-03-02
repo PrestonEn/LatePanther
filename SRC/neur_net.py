@@ -20,9 +20,10 @@ import numpy as np
 import random
 import copy
 import time
+import operator
 
 current_milli_time = lambda: int(round(time.time() * 1000))
-
+print current_milli_time()
 random.seed(current_milli_time())
 pp = pprint.PrettyPrinter(indent=1)
 
@@ -94,6 +95,19 @@ class Network(object):
         self.error_function = err
 
         # rProp variables
+        self.hidden_weight_E = np.zeros((self.num_hidden,
+                                         self.num_output))
+
+        self.hidden_weight_deltas = np.full((self.num_hidden,self.num_output), 0.1)
+
+
+        self.prev_hidden_weight_E = np.zeros((self.num_hidden, self.num_output))
+
+        self.input_weight_E = np.zeros((self.num_inputs, self.num_hidden))
+
+        self.input_weight_deltas = np.full((self.num_inputs, self.num_hidden), 0.1)
+
+        self.prev_input_weight_E = np.zeros((self.num_inputs, self.num_hidden))
 
     def run(self, inputs):
         """
@@ -157,7 +171,7 @@ class Network(object):
                                               (momentum * self.hidden_weight_overlay[h][o]))
                 self.hidden_weight_overlay[h][o] = change
 
-        # update input overlay
+        # update input weights
         for i in xrange(self.num_inputs):
             for h in xrange(self.num_hidden):
                 change = hidden_deltas[h] * self.inputs[i]
@@ -170,6 +184,124 @@ class Network(object):
         for o in xrange(self.num_output):
             error += 0.5*(targets[o] - self.outputs[o])**2.0
         return error
+
+
+    def r_prop_delta_sum(self, targets):
+        out_error = np.zeros(self.num_output)
+        # calulate out deltas
+        for o in xrange(self.num_output):
+            out_error[o] = targets[o] - self.outputs[o]
+        return out_error
+
+
+
+
+    def trainRP(self, dataset, itter, dmin=0.000001, dmax= 50.0, npos=1.2, nneg = 0.5):
+
+        out_error_sum = np.zeros(self.num_output)
+        hidden_deltas = np.zeros(self.num_hidden)
+
+        for epoc in xrange(itter):
+
+
+            error = 0.0
+
+            for example in dataset:
+                self.run(example[0])
+                out_error = self.r_prop_delta_sum(example[1])
+                out_deltas = map(operator.add, out_error, out_error_sum)
+
+                for o in xrange(self.num_output):
+                    error+= 0.5*(example[1][o] - self.outputs[o])**2.0
+
+            print epoc, ":\t\t", 'error =', error/len(dataset)
+
+            for i in xrange(len(out_error_sum)):
+                out_error_sum[i] = out_error_sum[i] / float(len(dataset))
+
+            out_error_sum = map(self.error_function, out_error_sum)
+
+            # calculate hidden deltas
+            for h in xrange(self.num_hidden):
+                error = 0.0
+                for o in xrange(self.num_output):
+                    error += out_deltas[o] * self.hidden_weights[h][o]
+                    self.hidden_weight_E[h][o] = error_function(out_deltas[o] * self.hidden_weights[h][o])
+                hidden_deltas[h] = error * self.error_function(self.hiddens[h])
+
+            # calculate hidden deltas
+            for i in xrange(self.num_inputs):
+                for h in xrange(self.num_hidden):
+                    self.input_weight_E[i][h] = error_function(hidden_deltas[h] * self.in_weights[i][h])
+
+
+            for h in xrange(self.num_hidden):
+                for o in xrange(self.num_output):
+                    E = self.hidden_weight_E[h][o]
+                    pE = self.prev_hidden_weight_E[h][o]
+                    sign = pE * E
+                    # print pE, E, sign
+
+                    if sign > 0:
+                        # print "you"
+                        self.hidden_weight_deltas[h][o] = min((self.hidden_weight_deltas[h][o]*npos),dmax)
+                        if E >= 0:
+                            change = self.hidden_weight_deltas[h][o]
+                        else:
+                            change = -1 * self.hidden_weight_deltas[h][o]
+
+                    elif sign < 0:
+                        # print "are so "
+                        change = 0
+                        self.hidden_weight_deltas[h][o] = max((self.hidden_weight_deltas[h][o]*nneg),dmin)
+                        E = 0
+
+                    elif sign == 0:
+                        # print "fuuuuucked"
+                        if E >= 0:
+                            change = self.hidden_weight_deltas[h][o]
+                        else:
+                            change = -1 * self.hidden_weight_deltas[h][o]
+
+                    self.prev_hidden_weight_E[h][o] = self.hidden_weight_E[h][o]
+                    self.hidden_weights[h][o] -= change
+
+
+            for i in xrange(self.num_inputs):
+                for h in xrange(self.num_hidden):
+                    E = self.input_weight_E[i][h]
+                    pE = self.prev_input_weight_E[i][h]
+                    sign = pE * E
+                    print pE, E, sign
+                    if sign > 0:
+                        print "yo"
+                        self.input_weight_deltas[i][h] = min((self.input_weight_deltas[i][h]*npos),dmax)
+                        if E >= 0:
+                            change = self.input_weight_deltas[i][h]
+                        else:
+                            change = -1 * self.input_weight_deltas[i][h]
+
+                    elif sign < 0:
+                        print "hello"
+                        change = 0
+                        self.input_weight_deltas[i][h] = max((self.input_weight_deltas[i][h]*nneg),dmin)
+                        E = 0
+
+                    elif sign == 0:
+                        print "hooray"
+                        if E >= 0:
+                            change = self.input_weight_deltas[i][h]
+                        else:
+                            change = -1 * self.input_weight_deltas[i][h]
+
+                    self.in_weights[i][h] -= change
+                    self.prev_input_weight_E[i][h] = self.input_weight_E[i][h]
+
+
+
+
+
+
 
     def trainBP(self, dataset, itter, learning_rate, momentum, verbose=False):
         """Backpropigation based training
@@ -196,15 +328,7 @@ class Network(object):
             if (error < 0.02):
                 return
 
-    def trainRP(self, dataset, itter, learning_rate, momentum, verbose=False):
-        """Resilient Propigation based training
-        Arguments:
-        dataset --
-        itter --
-        learning_rate --
-        momentum --
-        """
-        print "TODO"
+
 
     def test(self, patterns, verbose=False):
         """testing function
@@ -269,21 +393,24 @@ def cancer_holdout_bp(test_portion, hidden_nodes, fun_pair, len_rate, momentum, 
     training_set = working_set[test_size:]
 
     ann.trainBP(training_set, 500, len_rate, momentum, True)
+
+    print "validation accuracy"
     ann.test(validation_set, False)
 
+    print "training accuracy"
+    ann.test(training_set, False)
 
 
 def iris_test():
-
-
     train = iris_data[:80]
     test = iris_data[80:]
 
     pp.pprint(train)
 
-    ann = Network(4,  9, 3, -1, 1)
-    ann.train(train, 500,0.7,0.5)
-    ann.test(test, verbose=True)
+    ann = Network(4,  9, 3, 0, 1, activation, error_function)
+    ann.trainRP(train, 200)
+    ann.test(test)
+
 
 
 def cancer_test():
@@ -291,10 +418,10 @@ def cancer_test():
     train = cancer_data[:455]
     test = cancer_data[455:]
 
-    pp.pprint(train)
-    ann = Network(30, 8, 2, 0, 1, activation, error_function)
-    ann.trainBP(train, 1000,0.7,0.5)
+
+    ann = Network(30, 14, 2, 0, 1, activation, error_function)
+    ann.trainRP(train, 200)
     ann.test(test)
 
 
-cancer_holdout_bp(.2, 21,(activation, error_function), 0.7, 0.5, True)
+iris_test()
