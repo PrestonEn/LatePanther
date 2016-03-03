@@ -268,7 +268,7 @@ def cancer_holdout_bp(test_portion, hidden_nodes, fun_pair, len_rate, momentum, 
     validation_set = working_set[:test_size]
     training_set = working_set[test_size:]
 
-    ann.trainBP(training_set, 500, len_rate, momentum, True)
+    ann.trainBP(training_set, 500, len_rate, momentum, False)
     ann.test(validation_set, False)
 
 
@@ -297,4 +297,5 @@ def cancer_test():
     ann.test(test)
 
 
-cancer_holdout_bp(.2, 21,(activation, error_function), 0.7, 0.5, True)
+for i in xrange(150):
+    cancer_holdout_bp(.2, 21,(activation, error_function), 0.7, 0.5, True)
