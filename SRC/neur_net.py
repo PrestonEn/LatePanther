@@ -20,6 +20,7 @@ import numpy as np
 import random
 import copy
 import time
+import pandas as pd
 
 current_milli_time = lambda: int(round(time.time() * 1000))
 
@@ -27,7 +28,7 @@ random.seed(current_milli_time())
 pp = pprint.PrettyPrinter(indent=1)
 
 
-def create_dataset(file, attrib_col_start, attrib_col_end, class_col, label_col, header=True):
+def create_dataset(file, attrib_col_start, attrib_col_end, class_col, header=True):
     values =  np.loadtxt(file, delimiter=',',
                          usecols=range(attrib_col_start,attrib_col_end+1),
                          skiprows=1)
@@ -38,15 +39,18 @@ def create_dataset(file, attrib_col_start, attrib_col_end, class_col, label_col,
         nums.append([int(n) for n in list(string)])
 
     return [list(a) for a in zip(values.tolist(), nums)]
-iris_data = create_dataset("../data/iris/iris_post_norm_0to1.csv",0,3,4,5)
-cancer_data = create_dataset("../data/wisc/cancer_post_norm_0to1.csv",0,29,30,31)
-
+iris_data = create_dataset("../data/iris/iris_post_norm_0to1.csv",0,3,4)
+cancer_data = create_dataset("../data/wisc/cancer_post_norm_0to1.csv",0,29,30)
+small_cancer = create_dataset("../data/wisc/smallcancer_post.csv",0,8,9)
 
 def activation(x):
     return 1.0 / (1.0 + math.exp(-x))
 
 def error_function(y):
     return y * (1.0 - y)
+
+def tanh_error(y):
+    return 1-y**2
 
 class Network(object):
     """ Neural network
@@ -179,24 +183,34 @@ class Network(object):
         learning_rate --
         momentum --
         """
+        mse = []
+        classi_error = []
+        errors = [mse, classi_error]
         for i in xrange(itter):
             error = 0.0
             count_correct = 0
-            error_record = []
+
             for example in dataset:
-                self.run(example[0])
+                results = self.run(example[0])
                 ex_error = self.backprop(example[1], learning_rate, momentum)
                 error += ex_error
+                cor = False in(example[1]==results[1])
+                if(cor == False):
+                    count_correct+=1
+
             error /= float(len(dataset))
+            mse.append(error)
+            classi_error.append(1.0 - count_correct/float(len(dataset)))
 
-            if verbose:
-                print i, ":\t\t", 'error =', error
+            if i % 10 == 0:
+               print "epoc:\t", i, "\tmse:\t", error, "\t% wrong:\t", 1.0 - count_correct/float(len(dataset))
+        return errors
 
-            error_record.append([i, error])
-            if (error < 0.02):
-                return
 
-    def trainRP(self, dataset, itter ,dmin=0.000001, dmax= 50.0, npos=1.2, nneg = 0.5):
+
+
+
+    def trainRP(self, dataset, itter ,dmin=0.000001, dmax= 50.0, npos=1.2, nneg = 0.5, verbose=False):
 
         out_grad= np.zeros(self.num_output)
         hidden_grad = np.zeros(self.num_hidden)
@@ -208,7 +222,12 @@ class Network(object):
         #deltas
         prev_in_hid_deltas = np.full((self.num_inputs, self.num_hidden), 0.1)
         prev_hid_out_deltas = np.full((self.num_hidden, self.num_output), 0.1)
-        print "epoc", "\t", "percent correct", "\t", "MSE"
+
+
+        mse = []
+        classi_error = []
+
+        errors = [mse, classi_error]
         for epoc in xrange(itter):
             count_correct = 0
 
@@ -291,7 +310,13 @@ class Network(object):
                     prev_hid_out_deltas[h][o] = delta
                     prev_hid_out_grads[h][o] = hid_out_grads[h][o]
 
-            print epoc, "\t\t",count_correct/float(len(dataset)), "\t\t",mserror/float(len(dataset))
+            if epoc % 10 == 0:
+                print "epoc:\t", epoc, "\tmse:\t", mserror, "\t% wrong:\t", 1.0 - count_correct/float(len(dataset))
+            mse.append(mserror)
+            classi_error.append(1.0 - count_correct/float(len(dataset)))
+        return errors
+
+
 
     def test(self, patterns, verbose=False):
         """testing function
@@ -299,34 +324,62 @@ class Network(object):
         patterns --
         verbose --
         """
-
         count =0
         correct = 0
+        outcome = []
         for p in patterns:
             count+= 1
             res = self.run(p[0])
-            if verbose:
-                print p[0], '->', [ '%.2f' % elem for elem in res[0] ],'=' , res[1], '=', p[1]
+
+            print p[0], '->', [ '%.2f' % elem for elem in res[0] ],'=' , res[1], '=', p[1]
             cor = False in(p[1]==res[1])
             if(cor == False):
+                outcome.append(True)
                 correct+=1
+            else:
+                outcome.append(False)
 
-        results = [len(patterns), correct, float(correct)/float(len(patterns))]
-        print results
+        results = [float(correct)/float(len(patterns)), outcome]
+        print results[0]
         return results
 
 
-def iris_holdout_bp(test_portion, hidden_nodes, fun_pair, len_rate, momentum, shuffle = False):
+# def k_fold_bp(folds, anns,  learn_rates, momentums, filename):
+#
+#     models =[]
+#     results = []
+#     for i in xrange(len(anns)):
+#         models.append([])
+#         results.append([])
+#
+#     for k in xrange(folds):
+#         for i in xrange(len(anns)):
+#             models[i].append(copy.deepcopy(anns[i])
+
+
+def iris_holdout_bp(test_portion,ann, learn_rate, momentum):
     """
     Simple holdout method: split data into 2
     sets, training and validation
     :param training_size:
     :return:
     """
-    ann = Network(4, hidden_nodes, 3, 0, 1, fun_pair[0], fun_pair[1])
+    working_set = iris_data
+    test_size = int(test_portion * len(iris_data))
 
-    if shuffle:
-        np.random.shuffle(iris_data)
+    validation_set = working_set[:test_size]
+    training_set = working_set[test_size:]
+
+    ann.trainBP(training_set, 200, learn_rate, momentum, False)
+    ann.test(validation_set, False)
+
+def iris_holdout_rp(test_portion,ann):
+    """
+    Simple holdout method: split data into 2
+    sets, training and validation
+    :param training_size:
+    :return:
+    """
 
     working_set = iris_data
     test_size = int(test_portion * len(iris_data))
@@ -334,54 +387,66 @@ def iris_holdout_bp(test_portion, hidden_nodes, fun_pair, len_rate, momentum, sh
     validation_set = working_set[:test_size]
     training_set = working_set[test_size:]
 
-    ann.trainBP(training_set, 500, len_rate, momentum, False)
-    ann.test(validation_set, False)
+    train_errors = ann.trainRP(training_set, 200, False)
+    test_errors = ann.test(validation_set, False)
+    return test_errors
 
-def cancer_holdout_bp(test_portion, hidden_nodes, fun_pair, len_rate, momentum, shuffle = False):
+def cancer_holdout_bp(test_portion, ann, learn_rate, momentum):
     """
     Simple holdout method: split data into 2
     sets, training and validation
     :param training_size:
     :return:
     """
-    ann = Network(30, hidden_nodes, 2, 0, 1, fun_pair[0], fun_pair[1])
-
-    if shuffle:
-        np.random.shuffle(cancer_data)
-
-    working_set = cancer_data
+    working_set = small_cancer
     test_size = int(test_portion * len(cancer_data))
 
     validation_set = working_set[:test_size]
     training_set = working_set[test_size:]
 
-    ann.trainBP(training_set, 500, len_rate, momentum, False)
+    ann.trainBP(training_set, 200, learn_rate, momentum, True)
     ann.test(validation_set, False)
 
+def cancer_holdout_rp(test_portion, ann):
+    """
+    Simple holdout method: split data into 2
+    sets, training and validation
+    :param training_size:
+    :return:
+    """
+    working_set = small_cancer
+    test_size = int(test_portion * len(cancer_data))
+
+    validation_set = working_set[:test_size]
+    training_set = working_set[test_size:]
+
+    train_errors = ann.trainRP(training_set, 200, False)
+    test_errors = ann.test(validation_set, False)
+    return test_errors
 
 
-def iris_test():
+# collect data for t-tests between models on cancer data
+# different activation functions
+# 80/20 holdout
+# rp_t_test = pd.DataFrame(index=np.arange(30), columns=["moda", "modb"])
+# model_a_test = []
+# model_b_test = []
+# for i in xrange(30):
+#     print i
+#     np.random.shuffle(small_cancer)
+#     model_a = Network(4,5,3,0,1,math.tanh, tanh_error)
+#     model_b = Network(4,5,3,0,1,activation, error_function)
+#     out_a = iris_holdout_rp(0.2 ,model_a)
+#     out_b = iris_holdout_rp(0.2 ,model_b)
+#     model_a_test.append(out_a[0])
+#     model_b_test.append(out_b[0])
+#
+# rp_t_test['moda'] = model_a_test
+# rp_t_test['modb'] = model_b_test
+
+# rp_t_test.to_csv(path_or_buf='../data/rp_actv_t_test_iris.csv', index=False)
 
 
-    train = iris_data[:80]
-    test = iris_data[80:]
-
-    pp.pprint(train)
-
-    ann = Network(4,  9, 3, -1, 1)
-    ann.train(train, 500,0.7,0.5)
-    ann.test(test, verbose=True)
 
 
-def cancer_test():
-    np.random.shuffle(cancer_data)
-    train = cancer_data[:455]
-    test = cancer_data[455:]
 
-    pp.pprint(train)
-    ann = Network(30, 14, 2, 0, 1, activation, error_function)
-    ann.trainRP(train, 150)
-    ann.test(test)
-
-
-cancer_test()

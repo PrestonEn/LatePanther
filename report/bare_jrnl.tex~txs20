@@ -107,7 +107,7 @@
 % The documentation is contained in the cite.sty file itself.
 
 
-\usepackage{amssymb}
+
 
 
 
@@ -487,10 +487,6 @@ unseen data is demonstrable by their wide use in industry on problems ranging fr
 
 
 \section{Feed Forward Neural Networks}
-A neural network is a graph structure, a collection of nodes, joined by weighted edges. 
-Our neural network is implemented as a multi-layer, feed forward network. In general, a feed forward network is one that only connects nodes in
-one layer to the next layer. It is a directed graph with no cycles. The simplest feed forward network is the single layer perception. Data is passed
-directly from the input nodes to the output nodes, with no hidden layers. This simple network architecture is impossible to train on non-linearly separable data.
 \begin{figure}[!ht]
 	\centering
 	\includegraphics[width=2in]{linsep.png}
@@ -505,36 +501,50 @@ directly from the input nodes to the output nodes, with no hidden layers. This s
 		nodes, and one output node[1]}
 	\label{fig_sim}
 \end{figure}
-\indent The introduction of hidden layers in feed forward networks alleviates this restriction. The Universal Approximation Theorem states that a feed forward neural network with a single hidden layer can approximate continuous functions on bounded subsets of $\mathbb{R}$. 
+
+Our neural network is implemented as a multi-layer, feed forward network. In general, a feed forward network is one that only connects nodes in
+one layer to the next layer. It is a directed graph with no cycles. The simplest feed forward network is the single layer perception. Data is passed
+directly from the input nodes to the output nodes, with no hidden layers. This simple network architecture is impossible to train on non-linearly separable data.
 \subsection{Learning Rules}
-There are several algorithms for teaching neural nets to adapt their weight based on some calculated error. Training begins with a model with randomly initialized weights, which are modified until some criteria is met. At that point, if the model is acceptable, it is taken, or the training process can reset or continue. The majority of learning rules utilize gradient descent, traveling backwards through the network to compute the required gradients. 
 
 \subsection{Backpropagation}
 
 \subsection{Resilient Propagation}
 
-\subsection{Over-fitting in Neural Networks}
-
 \section{Methods of Analysis}
-\subsection{McNemar's Test}
-
-\subsection{ANOVA}
-
-\subsection{T-tests}
-
 
 \section{Results and Discussion}
 
-\subsection{Comparison of Activation Functions}
 
-\subsection{Comparison of Backpropagation Models with Learning Rate and Momentum}
-
-\subsection{Effects of the Number of Hidden Nodes}
 \section{Conclusions}
 The conclusion goes here.
 
 
 
+
+
+% if have a single appendix:
+%\appendix[Proof of the Zonklar Equations]
+% or
+%\appendix  % for no appendix heading
+% do not use \section anymore after \appendix, only \section*
+% is possibly needed
+
+% use appendices with more than one appendix
+% then use \section to start each appendix
+% you must declare a \section before using any
+% \subsection or using \label (\appendices by itself
+% starts a section numbered zero.)
+%
+
+
+
+
+% use section* for acknowledgment
+\section*{Acknowledgment}
+
+
+The author would like to thank the creators and maintainers of Python's Numpy packages.
 
 
 % Can use something like this to put references on a page
@@ -571,11 +581,6 @@ The conclusion goes here.
 
 \bibitem{IEEEhowto:kopka}
 S.  Russell and P.  Norvig, Artificial intelligence. Upper Saddle River, N.J.: Prentice Hall/Pearson Education, 2003.
-
-\bibitem{IEEEhowto:kopka}
-K. Hornik, "Approximation capabilities of multilayer feedforward networks", Neural Netw., vol. 4, no. 2, pp. 251-257, 1991
-\bibitem{IEEEhowto:kopka}
-J Demsar, "Statistical Comparisons of Classifiers over Multiple Data Sets", Journal of Machine Learning Research vol .7, 2006
 \end{thebibliography}
 
 % biography section
