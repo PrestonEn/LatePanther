@@ -370,8 +370,9 @@ def iris_holdout_bp(test_portion,ann, learn_rate, momentum):
     validation_set = working_set[:test_size]
     training_set = working_set[test_size:]
 
-    ann.trainBP(training_set, 200, learn_rate, momentum, False)
-    ann.test(validation_set, False)
+    train_errors = ann.trainRP(training_set, 200, False)
+    test_errors = ann.test(validation_set, False)
+    return test_errors
 
 def iris_holdout_rp(test_portion,ann):
     """
@@ -422,29 +423,31 @@ def cancer_holdout_rp(test_portion, ann):
 
     train_errors = ann.trainRP(training_set, 200, False)
     test_errors = ann.test(validation_set, False)
+    print test_errors[0], "Validation"
+    print ann.test(validation_set, False)
     return test_errors
 
 
 # collect data for t-tests between models on cancer data
 # different activation functions
 # 80/20 holdout
-# rp_t_test = pd.DataFrame(index=np.arange(30), columns=["moda", "modb"])
-# model_a_test = []
-# model_b_test = []
-# for i in xrange(30):
-#     print i
-#     np.random.shuffle(small_cancer)
-#     model_a = Network(4,5,3,0,1,math.tanh, tanh_error)
-#     model_b = Network(4,5,3,0,1,activation, error_function)
-#     out_a = iris_holdout_rp(0.2 ,model_a)
-#     out_b = iris_holdout_rp(0.2 ,model_b)
-#     model_a_test.append(out_a[0])
-#     model_b_test.append(out_b[0])
-#
-# rp_t_test['moda'] = model_a_test
-# rp_t_test['modb'] = model_b_test
+rp_t_test = pd.DataFrame(index=np.arange(10), columns=["moda", "modb"])
+model_a_test = []
+model_b_test = []
+for i in xrange(10):
+    print i
+    np.random.shuffle(small_cancer)
+    model_a = Network(4,4,3,0,1,activation, error_function)
+    model_b = Network(4,3,3,0,1,activation, error_function)
+    out_a = iris_holdout_bp(0.3 ,model_a, 0.07, 0.5)
+    out_b = iris_holdout_bp(0.3 ,model_b, 0.000001, 0.5)
+    model_a_test.append(out_a[0])
+    model_b_test.append(out_b[0])
 
-# rp_t_test.to_csv(path_or_buf='../data/rp_actv_t_test_iris.csv', index=False)
+rp_t_test['moda'] = model_a_test
+rp_t_test['modb'] = model_b_test
+
+rp_t_test.to_csv(path_or_buf='../data/bp_actv_t_test_iris_hid_nodes.csv', index=False)
 
 
 

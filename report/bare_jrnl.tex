@@ -58,6 +58,7 @@
 % \documentclass[journal]{../sty/IEEEtran}
 
 
+\usepackage{listings}             % Include the listings-package
 
 
 
@@ -108,7 +109,7 @@
 
 
 \usepackage{amssymb}
-
+\usepackage{algpseudocode}
 
 
 % *** GRAPHICS RELATED PACKAGES ***
@@ -211,7 +212,7 @@
 % generate multiline equations as well as matrices, tables, etc., of high
 % quality.
 
-
+\usepackage{color}
 
 
 % *** SUBFIGURE PACKAGES ***
@@ -404,7 +405,7 @@
 % You can use \ifCLASSOPTIONpeerreview for conditional compilation here if
 % you desire.
 
-
+\lstset{language=Python}
 
 
 % If you want to put a publisher's ID mark on the page you can do it like
@@ -451,7 +452,22 @@ Neural Networks, Machine Leaning, Feed Forward, Propagation
 % creates the second title. It will be ignored for other modes.
 \IEEEpeerreviewmaketitle
 
-
+\lstset{frame=tb,
+	language=Python,
+	aboveskip=3mm,
+	belowskip=3mm,
+	showstringspaces=false,
+	columns=flexible,
+	basicstyle={\small\ttfamily},
+	numbers=none,
+	numberstyle=\tiny\color{gray},
+	keywordstyle=\color{blue},
+	commentstyle=\color{dkgreen},
+	stringstyle=\color{mauve},
+	breaklines=true,
+	breakatwhitespace=true,
+	tabsize=3
+}
 
 \section{Introduction}
 % The very first letter is a 2 line initial drop letter followed
@@ -510,6 +526,19 @@ directly from the input nodes to the output nodes, with no hidden layers. This s
 There are several algorithms for teaching neural nets to adapt their weight based on some calculated error. Training begins with a model with randomly initialized weights, which are modified until some criteria is met. At that point, if the model is acceptable, it is taken, or the training process can reset or continue. The majority of learning rules utilize gradient descent, traveling backwards through the network to compute the required gradients. 
 
 \subsection{Backpropagation}
+\begin{lstlisting}
+given training example and label
+for each training example:
+
+	for o in outputs:
+		calculate output_delta
+	
+	for h in hidden:
+		calculate hidden delta
+	
+	update hidden weights
+	update input weights
+\end{lstlisting}
 
 \subsection{Resilient Propagation}
 
@@ -519,8 +548,6 @@ There are several algorithms for teaching neural nets to adapt their weight base
 \subsection{McNemar's Test}
 
 \subsection{ANOVA}
-
-\subsection{T-tests}
 
 
 \section{Results and Discussion}
