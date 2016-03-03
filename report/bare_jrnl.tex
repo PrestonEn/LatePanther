@@ -526,6 +526,8 @@ directly from the input nodes to the output nodes, with no hidden layers. This s
 There are several algorithms for teaching neural nets to adapt their weight based on some calculated error. Training begins with a model with randomly initialized weights, which are modified until some criteria is met. At that point, if the model is acceptable, it is taken, or the training process can reset or continue. The majority of learning rules utilize gradient descent, traveling backwards through the network to compute the required gradients. 
 
 \subsection{Backpropagation}
+\begin{figure}
+	\caption{Simple Backprop Skeleton}
 \begin{lstlisting}
 given training example and label
 for each training example:
@@ -539,9 +541,28 @@ for each training example:
 	update hidden weights
 	update input weights
 \end{lstlisting}
+\end{figure}
+
+
 
 \subsection{Resilient Propagation}
-
+\begin{figure}
+	\caption{Rprop Skeleton Code}
+	\begin{lstlisting}
+	for each epoch
+		given training example and label
+		for each training example:
+		
+		for o in outputs:
+		calculate output_delta
+		
+		for h in hidden:
+		calculate hidden delta
+		
+		accumulate gradients
+	update weights
+	\end{lstlisting}
+\end{figure}
 \subsection{Over-fitting in Neural Networks}
 
 \section{Methods of Analysis}
