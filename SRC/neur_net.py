@@ -20,7 +20,7 @@ import numpy as np
 import random
 import copy
 import time
-import operator
+import csv
 
 current_milli_time = lambda: int(round(time.time() * 1000))
 print current_milli_time()
@@ -48,6 +48,14 @@ def activation(x):
 
 def error_function(y):
     return y * (1.0 - y)
+
+def writefile(filename, header, data):
+    writer=csv.writer(open(filename,'wb'))
+    writer.writerow(header)
+
+    for row in data:
+        writer.writerow(row)
+
 
 class Network(object):
     """ Neural network
@@ -94,20 +102,6 @@ class Network(object):
         self.activation = activ
         self.error_function = err
 
-        # rProp variables
-        self.hidden_weight_E = np.zeros((self.num_hidden,
-                                         self.num_output))
-
-        self.hidden_weight_deltas = np.full((self.num_hidden,self.num_output), 0.1)
-
-
-        self.prev_hidden_weight_E = np.zeros((self.num_hidden, self.num_output))
-
-        self.input_weight_E = np.zeros((self.num_inputs, self.num_hidden))
-
-        self.input_weight_deltas = np.full((self.num_inputs, self.num_hidden), 0.1)
-
-        self.prev_input_weight_E = np.zeros((self.num_inputs, self.num_hidden))
 
     def run(self, inputs):
         """
@@ -178,7 +172,7 @@ class Network(object):
                 self.in_weights[i][h] += ((change * learning) +
                                           (momentum * self.in_weight_overlay[i][h]))
                 self.in_weight_overlay[i][h] = change
-
+        pp.pprint(self.hidden_weights)
         # calculate error
         error = 0.0
         for o in xrange(self.num_output):
@@ -186,116 +180,105 @@ class Network(object):
         return error
 
 
-    def r_prop_delta_sum(self, targets):
-        out_error = np.zeros(self.num_output)
-        # calulate out deltas
-        for o in xrange(self.num_output):
-            out_error[o] = targets[o] - self.outputs[o]
-        return out_error
 
 
 
+    def trainRP(self, dataset, itter, outfile,dmin=0.000001, dmax= 50.0, npos=1.2, nneg = 0.5):
 
-    def trainRP(self, dataset, itter, dmin=0.000001, dmax= 50.0, npos=1.2, nneg = 0.5):
+        out_grad= np.zeros(self.num_output)
+        hidden_grad = np.zeros(self.num_hidden)
 
-        out_error_sum = np.zeros(self.num_output)
-        hidden_deltas = np.zeros(self.num_hidden)
+        # gradients for weights
+        prev_in_hid_grads = np.full((self.num_inputs, self.num_hidden), 0.0)
+        prev_hid_out_grads = np.full((self.num_hidden, self.num_output), 0.0)
 
+        #deltas
+        prev_in_hid_deltas = np.full((self.num_inputs, self.num_hidden), 0.1)
+        prev_hid_out_deltas = np.full((self.num_hidden, self.num_output), 0.1)
+        print "epoc", "\t", "count correct", "\t", "percent correct", "\t", "MSE"
         for epoc in xrange(itter):
+            count_correct = 0
 
+            # set accum matricies to 0
+            in_hid_grads = np.zeros((self.num_inputs, self.num_hidden))
+            hid_out_grads = np.zeros((self.num_hidden, self.num_output))
 
-            error = 0.0
-
+            mserror = 0.0
             for example in dataset:
-                self.run(example[0])
-                out_error = self.r_prop_delta_sum(example[1])
-                out_deltas = map(operator.add, out_error, out_error_sum)
+                results = self.run(example[0])
+                cor = False in(example[1]==results[1])
+                if(cor == False):
+                    count_correct+=1
 
                 for o in xrange(self.num_output):
-                    error+= 0.5*(example[1][o] - self.outputs[o])**2.0
+                    mserror += 0.5*(example[1][o] - self.outputs[o])**2.0
 
-            print epoc, ":\t\t", 'error =', error/len(dataset)
 
-            for i in xrange(len(out_error_sum)):
-                out_error_sum[i] = out_error_sum[i] / float(len(dataset))
 
-            out_error_sum = map(self.error_function, out_error_sum)
 
-            # calculate hidden deltas
-            for h in xrange(self.num_hidden):
-                error = 0.0
+                # calulate out deltas as in backprop
                 for o in xrange(self.num_output):
-                    error += out_deltas[o] * self.hidden_weights[h][o]
-                    self.hidden_weight_E[h][o] = error_function(out_deltas[o] * self.hidden_weights[h][o])
-                hidden_deltas[h] = error * self.error_function(self.hiddens[h])
+                    out_grad[o] = example[1][o] - self.outputs[o]
+                    out_grad[o] *= self.error_function(self.outputs[o])
 
-            # calculate hidden deltas
-            for i in xrange(self.num_inputs):
+                # calculate hidden deltas as in backprop
                 for h in xrange(self.num_hidden):
-                    self.input_weight_E[i][h] = error_function(hidden_deltas[h] * self.in_weights[i][h])
+                    error = 0.0
+                    for o in xrange(self.num_output):
+                        error += out_grad[o] * self.hidden_weights[h][o]
+                    hidden_grad[h] = error * self.error_function(self.hiddens[h])
 
+                # accumulate hidden weight gradients
+                for h in xrange(self.num_hidden):
+                    for o in xrange(self.num_output):
+                      grad = out_grad[o] * self.hiddens[h]
+                      hid_out_grads[h][o] += grad
 
-            for h in xrange(self.num_hidden):
-                for o in xrange(self.num_output):
-                    E = self.hidden_weight_E[h][o]
-                    pE = self.prev_hidden_weight_E[h][o]
-                    sign = pE * E
-                    # print pE, E, sign
-
-                    if sign > 0:
-                        # print "you"
-                        self.hidden_weight_deltas[h][o] = min((self.hidden_weight_deltas[h][o]*npos),dmax)
-                        if E >= 0:
-                            change = self.hidden_weight_deltas[h][o]
-                        else:
-                            change = -1 * self.hidden_weight_deltas[h][o]
-
-                    elif sign < 0:
-                        # print "are so "
-                        change = 0
-                        self.hidden_weight_deltas[h][o] = max((self.hidden_weight_deltas[h][o]*nneg),dmin)
-                        E = 0
-
-                    elif sign == 0:
-                        # print "fuuuuucked"
-                        if E >= 0:
-                            change = self.hidden_weight_deltas[h][o]
-                        else:
-                            change = -1 * self.hidden_weight_deltas[h][o]
-
-                    self.prev_hidden_weight_E[h][o] = self.hidden_weight_E[h][o]
-                    self.hidden_weights[h][o] -= change
-
+                # accumulate in weight gradients
+                for i in xrange(self.num_inputs):
+                    for h in xrange(self.num_hidden):
+                      grad = hidden_grad[h] * self.inputs[i]
+                      in_hid_grads[i][h] += grad
 
             for i in xrange(self.num_inputs):
                 for h in xrange(self.num_hidden):
-                    E = self.input_weight_E[i][h]
-                    pE = self.prev_input_weight_E[i][h]
-                    sign = pE * E
-                    print pE, E, sign
-                    if sign > 0:
-                        print "yo"
-                        self.input_weight_deltas[i][h] = min((self.input_weight_deltas[i][h]*npos),dmax)
-                        if E >= 0:
-                            change = self.input_weight_deltas[i][h]
-                        else:
-                            change = -1 * self.input_weight_deltas[i][h]
+                    if in_hid_grads[i][h] * prev_in_hid_deltas[i][h] > 0:
+                        delta = min(prev_in_hid_deltas[i][h] * npos, dmax)
+                        tmp = np.sign(in_hid_grads[i][h]) * delta
+                        self.in_weights[i][h] += tmp
 
-                    elif sign < 0:
-                        print "hello"
-                        change = 0
-                        self.input_weight_deltas[i][h] = max((self.input_weight_deltas[i][h]*nneg),dmin)
-                        E = 0
+                    elif in_hid_grads[i][h] * prev_in_hid_deltas[i][h] < 0:
+                        delta = max(prev_in_hid_deltas[i][h] * nneg, dmin)
+                        self.in_weights[i][h] -= prev_in_hid_deltas[i][h]
+                        in_hid_grads[i][h] = 0
 
-                    elif sign == 0:
-                        print "hooray"
-                        if E >= 0:
-                            change = self.input_weight_deltas[i][h]
-                        else:
-                            change = -1 * self.input_weight_deltas[i][h]
+                    else:
+                        delta = prev_in_hid_deltas[i][h]
+                        tmp = np.sign(in_hid_grads[i][h]) * delta
+                        self.in_weights[i][h] += tmp
+                    prev_in_hid_deltas[i][h] = delta
+                    prev_in_hid_grads[i][h] = in_hid_grads[i][h]
 
-                    self.in_weights[i][h] -= change
-                    self.prev_input_weight_E[i][h] = self.input_weight_E[i][h]
+            for h in xrange(self.num_hidden):
+                for o in xrange(self.num_output):
+                    if hid_out_grads[h][o] * prev_hid_out_grads[h][o] > 0:
+                        delta = min(prev_hid_out_deltas[h][o] * npos, dmax)
+                        tmp = np.sign(hid_out_grads[h][o]) * delta
+                        self.hidden_weights[h][o] += tmp
+
+                    elif hid_out_grads[h][o] * prev_hid_out_grads[h][o] < 0:
+                        delta = max(prev_hid_out_deltas[h][o] * nneg, dmin)
+                        self.hidden_weights[h][o] -= prev_hid_out_deltas[h][o]
+                        hid_out_grads[h][o] = 0
+
+                    else:
+                        delta = prev_hid_out_deltas[h][o]
+                        tmp = np.sign(hid_out_grads[h][o]) * delta
+                        self.hidden_weights[h][o] += tmp
+                    prev_hid_out_deltas[h][o] = delta
+                    prev_hid_out_grads[h][o] = hid_out_grads[h][o]
+
+            print epoc, "\t\t", count_correct, "\t\t",count_correct/float(len(dataset)), "\t\t",mserror/float(len(dataset))
 
 
 
@@ -303,7 +286,8 @@ class Network(object):
 
 
 
-    def trainBP(self, dataset, itter, learning_rate, momentum, verbose=False):
+
+    def trainBP(self, dataset, itter, filepath,learning_rate=0.7, momentum=0.5, verbose=False):
         """Backpropigation based training
         Arguments:
         dataset --
@@ -339,6 +323,7 @@ class Network(object):
 
         count =0
         correct = 0
+        results = []
         for p in patterns:
             count+= 1
             res = self.run(p[0])
@@ -401,14 +386,23 @@ def cancer_holdout_bp(test_portion, hidden_nodes, fun_pair, len_rate, momentum, 
     ann.test(training_set, False)
 
 
-def iris_test():
+def iris_test_RP():
+    np.random.shuffle(iris_data)
     train = iris_data[:80]
     test = iris_data[80:]
 
-    pp.pprint(train)
+    ann = Network(4,  6, 3, 0, 1, activation, error_function)
+    ann.trainRP(train, 500)
+    ann.test(test)
+
+
+def iris_test_bp():
+    np.random.shuffle(iris_data)
+    train = iris_data[:80]
+    test = iris_data[80:]
 
     ann = Network(4,  9, 3, 0, 1, activation, error_function)
-    ann.trainRP(train, 200)
+    ann.trainBP(train, 5)
     ann.test(test)
 
 
@@ -417,11 +411,21 @@ def cancer_test():
     np.random.shuffle(cancer_data)
     train = cancer_data[:455]
     test = cancer_data[455:]
-
-
-    ann = Network(30, 14, 2, 0, 1, activation, error_function)
-    ann.trainRP(train, 200)
+    ann = Network(30, 16, 2, 0, 1, activation, error_function)
+    ann.trainRP(train, 500)
     ann.test(test)
 
 
-iris_test()
+def xor_test():
+    data =[
+        [[0,0],[0,1]],
+        [[1,0],[1,0]],
+        [[0,1],[1,0]],
+        [[1,1],[0,1]],
+    ]
+    ann = Network(2, 4, 2, 0, 1, activation, error_function)
+    ann.trainRP(data,1000, "../data/xortest1.csv")
+    ann.test(data, verbose=True)
+
+
+iris_test_RP()
