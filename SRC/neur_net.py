@@ -196,15 +196,102 @@ class Network(object):
             if (error < 0.02):
                 return
 
-    def trainRP(self, dataset, itter, learning_rate, momentum, verbose=False):
-        """Resilient Propigation based training
-        Arguments:
-        dataset --
-        itter --
-        learning_rate --
-        momentum --
-        """
-        print "TODO"
+    def trainRP(self, dataset, itter ,dmin=0.000001, dmax= 50.0, npos=1.2, nneg = 0.5):
+
+        out_grad= np.zeros(self.num_output)
+        hidden_grad = np.zeros(self.num_hidden)
+
+        # gradients for weights
+        prev_in_hid_grads = np.full((self.num_inputs, self.num_hidden), 0.0)
+        prev_hid_out_grads = np.full((self.num_hidden, self.num_output), 0.0)
+
+        #deltas
+        prev_in_hid_deltas = np.full((self.num_inputs, self.num_hidden), 0.1)
+        prev_hid_out_deltas = np.full((self.num_hidden, self.num_output), 0.1)
+        print "epoc", "\t", "percent correct", "\t", "MSE"
+        for epoc in xrange(itter):
+            count_correct = 0
+
+            # set accum matricies to 0
+            in_hid_grads = np.zeros((self.num_inputs, self.num_hidden))
+            hid_out_grads = np.zeros((self.num_hidden, self.num_output))
+
+            mserror = 0.0
+            for example in dataset:
+                results = self.run(example[0])
+                cor = False in(example[1]==results[1])
+                if(cor == False):
+                    count_correct+=1
+
+                for o in xrange(self.num_output):
+                    mserror += 0.5*(example[1][o] - self.outputs[o])**2.0
+
+
+
+
+                # calulate out deltas as in backprop
+                for o in xrange(self.num_output):
+                    out_grad[o] = example[1][o] - self.outputs[o]
+                    out_grad[o] *= self.error_function(self.outputs[o])
+
+                # calculate hidden deltas as in backprop
+                for h in xrange(self.num_hidden):
+                    error = 0.0
+                    for o in xrange(self.num_output):
+                        error += out_grad[o] * self.hidden_weights[h][o]
+                    hidden_grad[h] = error * self.error_function(self.hiddens[h])
+
+                # accumulate hidden weight gradients
+                for h in xrange(self.num_hidden):
+                    for o in xrange(self.num_output):
+                      grad = out_grad[o] * self.hiddens[h]
+                      hid_out_grads[h][o] += grad
+
+                # accumulate in weight gradients
+                for i in xrange(self.num_inputs):
+                    for h in xrange(self.num_hidden):
+                      grad = hidden_grad[h] * self.inputs[i]
+                      in_hid_grads[i][h] += grad
+
+            for i in xrange(self.num_inputs):
+                for h in xrange(self.num_hidden):
+                    if in_hid_grads[i][h] * prev_in_hid_deltas[i][h] > 0:
+                        delta = min(prev_in_hid_deltas[i][h] * npos, dmax)
+                        tmp = np.sign(in_hid_grads[i][h]) * delta
+                        self.in_weights[i][h] += tmp
+
+                    elif in_hid_grads[i][h] * prev_in_hid_deltas[i][h] < 0:
+                        delta = max(prev_in_hid_deltas[i][h] * nneg, dmin)
+                        self.in_weights[i][h] -= prev_in_hid_deltas[i][h]
+                        in_hid_grads[i][h] = 0
+
+                    else:
+                        delta = prev_in_hid_deltas[i][h]
+                        tmp = np.sign(in_hid_grads[i][h]) * delta
+                        self.in_weights[i][h] += tmp
+                    prev_in_hid_deltas[i][h] = delta
+                    prev_in_hid_grads[i][h] = in_hid_grads[i][h]
+
+            for h in xrange(self.num_hidden):
+                for o in xrange(self.num_output):
+                    if hid_out_grads[h][o] * prev_hid_out_grads[h][o] > 0:
+                        delta = min(prev_hid_out_deltas[h][o] * npos, dmax)
+                        tmp = np.sign(hid_out_grads[h][o]) * delta
+                        self.hidden_weights[h][o] += tmp
+
+                    elif hid_out_grads[h][o] * prev_hid_out_grads[h][o] < 0:
+                        delta = max(prev_hid_out_deltas[h][o] * nneg, dmin)
+                        self.hidden_weights[h][o] -= prev_hid_out_deltas[h][o]
+                        hid_out_grads[h][o] = 0
+
+                    else:
+                        delta = prev_hid_out_deltas[h][o]
+                        tmp = np.sign(hid_out_grads[h][o]) * delta
+                        self.hidden_weights[h][o] += tmp
+                    prev_hid_out_deltas[h][o] = delta
+                    prev_hid_out_grads[h][o] = hid_out_grads[h][o]
+
+            print epoc, "\t\t",count_correct/float(len(dataset)), "\t\t",mserror/float(len(dataset))
 
     def test(self, patterns, verbose=False):
         """testing function
@@ -247,8 +334,8 @@ def iris_holdout_bp(test_portion, hidden_nodes, fun_pair, len_rate, momentum, sh
     validation_set = working_set[:test_size]
     training_set = working_set[test_size:]
 
-    ann.trainBP(training_set, 500, len_rate, momentum, True)
-    ann.test(validation_set, True)
+    ann.trainBP(training_set, 500, len_rate, momentum, False)
+    ann.test(validation_set, False)
 
 def cancer_holdout_bp(test_portion, hidden_nodes, fun_pair, len_rate, momentum, shuffle = False):
     """
@@ -292,10 +379,9 @@ def cancer_test():
     test = cancer_data[455:]
 
     pp.pprint(train)
-    ann = Network(30, 8, 2, 0, 1, activation, error_function)
-    ann.trainBP(train, 1000,0.7,0.5)
+    ann = Network(30, 14, 2, 0, 1, activation, error_function)
+    ann.trainRP(train, 150)
     ann.test(test)
 
 
-for i in xrange(150):
-    cancer_holdout_bp(.2, 21,(activation, error_function), 0.7, 0.5, True)
+cancer_test()
