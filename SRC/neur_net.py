@@ -433,39 +433,7 @@ def cancer_holdout_rp(test_portion, ann):
 
 
 #diagnotic prints to console
+cancer_holdout = cancer_holdout_rp(0.2, Network(9,5,2,0,1, activation, error_function))
 
-cancer_holdout = cancer_holdout_bp(0.2, Network(9,5,2,0,1, activation, error_function), 0.01, 0.5)
-cancer_holdout2 = cancer_holdout_bp(0.2, Network(9,6,2,0,1, activation, error_function), 0.7, 0.5)
+cancer_holdout = cancer_holdout_bp(0.2, Network(9,5,2,0,1, activation, error_function), 0.7, 0.5)
 
-iris_holdout = iris_holdout_bp(0.2, Network(4,4,3,0,1,activation, error_function), 0.7, 0.5)
-iris_holdout2 = iris_holdout_bp(0.2, Network(4,2,3,0,1,activation, error_function), 0.01, 0.3)
-
-# collect data for t-tests between models on cancer data
-# different activation functions
-# 80/20 holdout
-# rp_t_test = pd.DataFrame(index=np.arange(10), columns=["moda", "modb"])
-# model_a_test = []
-# model_b_test = []
-# for i in xrange(10):
-#     print i
-#     np.random.shuffle(small_cancer)
-#     model_a = Network(4,4,3,0,1,activation, error_function)
-#     model_b = Network(4,3,3,0,1,activation, error_function)
-#     out_a = iris_holdout_bp(0.3 ,model_a, 0.07, 0.5)
-#     out_b = iris_holdout_bp(0.3 ,model_b, 0.000001, 0.5)
-#     model_a_test.append(out_a[0])
-#     model_b_test.append(out_b[0])
-#
-# rp_t_test['moda'] = model_a_test
-# rp_t_test['modb'] = model_b_test
-#
-# rp_t_test.to_csv(path_or_buf='../data/bp_actv_t_test_iris_hid_nodes.csv', index=False)
-
-mse_out = pd.DataFrame(index=np.arange(200), columns=["mse1", "mse2", "mse3", "mse4"])
-
-mse_out["mse1"] = cancer_holdout[0][0]
-mse_out["mse2"] = cancer_holdout2[0][0]
-mse_out["mse3"] = iris_holdout[0][0]
-mse_out["mse4"] = iris_holdout2[0][0]
-
-mse_out.to_csv(path_or_buf='../data/mse_outdata.csv', index=False)
